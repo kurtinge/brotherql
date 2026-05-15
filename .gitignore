@@ -1,0 +1,18 @@
+# Binaries
+/brotherql
+/cmd/brotherql/brotherql
+
+# Go
+*.test
+*.out
+coverage.txt
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+
+# Local Python venv for bootstrap scripts (golden file generation)
+testdata/.venv/
