@@ -2,11 +2,12 @@ package brotherql
 
 import (
 	"fmt"
+	"runtime"
 
 	"github.com/google/gousb"
 )
 
-// usbTransport implements transport over a real USB connection to a QL-700.
+// usbTransport implements transport over a real USB connection to a Brother QL printer.
 type usbTransport struct {
 	ctx      *gousb.Context
 	dev      *gousb.Device
@@ -16,14 +17,15 @@ type usbTransport struct {
 	in       *gousb.InEndpoint
 }
 
-// listUSB enumerates connected QL-700 printers without claiming them.
+// listUSB enumerates connected Brother QL printers without claiming them.
 func listUSB() ([]Info, error) {
 	ctx := gousb.NewContext()
 	defer ctx.Close()
 
 	var infos []Info
 	devs, err := ctx.OpenDevices(func(desc *gousb.DeviceDesc) bool {
-		return desc.Vendor == qlVendorID && desc.Product == qlProductID
+		_, ok := findModel(uint16(desc.Vendor), uint16(desc.Product))
+		return ok
 	})
 	if err != nil {
 		return nil, fmt.Errorf("brotherql: enumerate USB: %w", err)
@@ -39,21 +41,23 @@ func listUSB() ([]Info, error) {
 		if err != nil {
 			serial = "unknown"
 		}
+		m, _ := findModel(uint16(d.Desc.Vendor), uint16(d.Desc.Product))
 		infos = append(infos, Info{
 			Serial:  serial,
-			Model:   "QL-700",
+			Model:   m.Name,
 			USBPath: fmt.Sprintf("bus %d addr %d", d.Desc.Bus, d.Desc.Address),
 		})
 	}
 	return infos, nil
 }
 
-// openUSB opens a QL-700 by serial. If serial is empty, opens the first found.
+// openUSB opens a Brother QL printer by serial. If serial is empty, opens the first found.
 func openUSB(serial string) (*Printer, error) {
 	ctx := gousb.NewContext()
 
 	devs, err := ctx.OpenDevices(func(desc *gousb.DeviceDesc) bool {
-		return desc.Vendor == qlVendorID && desc.Product == qlProductID
+		_, ok := findModel(uint16(desc.Vendor), uint16(desc.Product))
+		return ok
 	})
 	if err != nil {
 		ctx.Close()
@@ -82,9 +86,18 @@ func openUSB(serial string) (*Printer, error) {
 		return nil, ErrPrinterNotFound
 	}
 
-	// SetAutoDetach is a no-op on macOS where there's no kernel driver
-	// to detach; safe to ignore the error.
-	_ = dev.SetAutoDetach(true)
+	// SetAutoDetach asks libusb to detach any kernel driver claiming the
+	// interface before we claim it ourselves. On Linux the usblp driver
+	// commonly holds the interface and we genuinely need this. On macOS
+	// libusb implements detach via USBDeviceReEnumerate, which requires
+	// root or a special entitlement — calling it from an unprivileged
+	// process fails with EACCES and prevents the subsequent claim. So
+	// skip the call on macOS and let the claim either succeed (driver
+	// only matched, not actively holding the interface) or fail with a
+	// clearer BUSY error.
+	if runtime.GOOS != "darwin" {
+		_ = dev.SetAutoDetach(true)
+	}
 
 	intf, intfDone, err := dev.DefaultInterface()
 	if err != nil {
@@ -115,6 +128,7 @@ func openUSB(serial string) (*Printer, error) {
 	}
 
 	serial2, _ := dev.SerialNumber()
+	m, _ := findModel(uint16(dev.Desc.Vendor), uint16(dev.Desc.Product))
 	return &Printer{
 		tr: &usbTransport{
 			ctx:      ctx,
@@ -125,6 +139,7 @@ func openUSB(serial string) (*Printer, error) {
 			in:       inEP,
 		},
 		serial: serial2,
+		model:  m,
 	}, nil
 }
 

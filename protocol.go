@@ -5,10 +5,12 @@ import "encoding/binary"
 // buildPrintJob assembles the full Brother QL command sequence for printing
 // the given raster bytes. Output is the exact byte stream to send over USB.
 //
-// Sequence layout (per Brother QL-700 raster command reference, mirrored
+// Sequence layout (per Brother QL raster command reference, mirrored
 // from brother_ql Python reference):
+//  0. Switch to raster   — ESC i a 0x01            (only if model.NeedsModeSwitch)
 //  1. Invalidate         — 200 zero bytes
 //  2. Initialize         — ESC @
+//  2b. Switch to raster  — ESC i a 0x01            (only if model.NeedsModeSwitch)
 //  3. Status request     — ESC i S
 //  4. Print info         — ESC i z {validity media_type width length lines:4LE start fixed}
 //  5. Auto-cut mode      — ESC i M {0x40 if cut}    (only if AutoCut)
@@ -18,14 +20,24 @@ import "encoding/binary"
 //  9. Compression off    — M 0x00
 // 10. Raster rows        — repeated: 0x67 0x00 0x5A <90 bytes>
 // 11. Print command      — 0x1A (with cut) or 0x0C (no cut)
-func buildPrintJob(raster []byte, label LabelType, opts PrintOptions) []byte {
+func buildPrintJob(raster []byte, label LabelType, opts PrintOptions, model modelInfo) []byte {
 	var buf []byte
+
+	// 0. Switch to raster mode (newer models default to template/ESC-P mode).
+	if model.NeedsModeSwitch {
+		buf = append(buf, 0x1B, 0x69, 0x61, 0x01)
+	}
 
 	// 1. Invalidate
 	buf = append(buf, make([]byte, 200)...)
 
 	// 2. Initialize
 	buf = append(buf, 0x1B, 0x40)
+
+	// 2b. Switch to raster mode (some models require it after init too).
+	if model.NeedsModeSwitch {
+		buf = append(buf, 0x1B, 0x69, 0x61, 0x01)
+	}
 
 	// 3. Status request
 	buf = append(buf, 0x1B, 0x69, 0x53)

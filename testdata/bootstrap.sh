@@ -19,8 +19,8 @@ set -euo pipefail
 cd "$(dirname "$0")"
 VENV=".venv"
 PNG="text-label.png"
-PRINT_JOB_GOLDEN="print-job.golden.bin"
 RASTER_GOLDEN="text-label.golden.bin"
+MODELS=("QL-700" "QL-710W")
 
 if [ ! -d "$VENV" ]; then
     echo "Creating venv at testdata/$VENV..."
@@ -41,28 +41,36 @@ bw = img.point(lambda v: 0 if v < 128 else 255, mode='L')
 bw.convert('1', dither=Image.Dither.NONE).save('text-label.png')
 PY
 
-echo "Generating $PRINT_JOB_GOLDEN and $RASTER_GOLDEN from brother_ql..."
-"$VENV/bin/python3" - <<'PY'
+echo "Generating per-model print-job goldens and $RASTER_GOLDEN from brother_ql..."
+"$VENV/bin/python3" - "${MODELS[@]}" <<'PY'
+import sys
 from brother_ql.raster import BrotherQLRaster
 from brother_ql.conversion import convert
-qlr = BrotherQLRaster('QL-700')
-qlr.exception_on_warning = True
-convert(qlr=qlr, images=['text-label.png'], label='62', cut=True, compress=False)
-data = qlr.data
-with open('print-job.golden.bin', 'wb') as f:
-    f.write(data)
-raster = bytearray()
-i = 0
-while i < len(data) - 92:
-    if data[i] == 0x67 and data[i+1] == 0x00 and data[i+2] == 0x5A:
-        raster.extend(data[i+3:i+93])
-        i += 93
-    else:
-        i += 1
-with open('text-label.golden.bin', 'wb') as f:
-    f.write(raster)
-print(f'  print-job.golden.bin: {len(data)} bytes')
-print(f'  text-label.golden.bin: {len(raster)} bytes')
+
+models = sys.argv[1:]
+raster_written = False
+for model in models:
+    qlr = BrotherQLRaster(model)
+    qlr.exception_on_warning = True
+    convert(qlr=qlr, images=['text-label.png'], label='62', cut=True, compress=False)
+    data = qlr.data
+    out = f'print-job.{model}.golden.bin'
+    with open(out, 'wb') as f:
+        f.write(data)
+    print(f'  {out}: {len(data)} bytes')
+    if not raster_written:
+        raster = bytearray()
+        i = 0
+        while i < len(data) - 92:
+            if data[i] == 0x67 and data[i+1] == 0x00 and data[i+2] == 0x5A:
+                raster.extend(data[i+3:i+93])
+                i += 93
+            else:
+                i += 1
+        with open('text-label.golden.bin', 'wb') as f:
+            f.write(raster)
+        print(f'  text-label.golden.bin: {len(raster)} bytes')
+        raster_written = True
 PY
 
 echo "Done. Run 'go test ./...' to verify goldens still match."

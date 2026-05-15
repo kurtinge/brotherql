@@ -5,11 +5,12 @@ import (
 	"image"
 )
 
-// Printer represents an open connection to a Brother QL-700.
+// Printer represents an open connection to a Brother QL printer.
 // Always Close() when done; defer is recommended.
 type Printer struct {
 	tr     transport
 	serial string
+	model  modelInfo
 }
 
 // Close releases the underlying transport.
@@ -48,7 +49,7 @@ func (p *Printer) Print(img image.Image, opts PrintOptions) error {
 		return fmt.Errorf("brotherql: raster encode: %w", err)
 	}
 
-	cmd := buildPrintJob(raster, opts.Label, opts)
+	cmd := buildPrintJob(raster, opts.Label, opts, p.model)
 	if _, err := p.tr.Write(cmd); err != nil {
 		return fmt.Errorf("brotherql: write print job: %w", err)
 	}

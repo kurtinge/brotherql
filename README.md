@@ -1,6 +1,6 @@
 # brotherql
 
-Go library and CLI for printing to **Brother QL-700** label printers over USB.
+Go library and CLI for printing to **Brother QL** label printers over USB.
 
 > **Status**: Early development (v0.x). API may change before v1.0.
 
@@ -19,8 +19,9 @@ Inspired by the [`brother_ql`](https://github.com/pklaus/brother_ql) Python libr
 ## Supported hardware
 
 - Brother QL-700 over USB.
+- Brother QL-710W over USB (wireless interface not used; USB only).
 
-Other Brother QL models (QL-800, QL-1100, QL-820NWB, etc.) are not yet supported in v1. Contributions welcome.
+Other Brother QL models (QL-720NW, QL-800, QL-1100, QL-820NWB, etc.) are not yet supported in v1. Contributions welcome.
 
 ## Installation
 
