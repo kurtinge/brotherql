@@ -78,7 +78,7 @@ func cmdStatus(args []string) int {
 	if err != nil {
 		return errExit(err)
 	}
-	defer p.Close()
+	defer func() { _ = p.Close() }()
 
 	s, err := p.Status()
 	if err != nil {
@@ -135,7 +135,7 @@ func cmdPrint(args []string) int {
 		fmt.Fprintf(os.Stderr, "open image: %v\n", err)
 		return 1
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	img, _, err := image.Decode(f)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "decode image: %v\n", err)
@@ -146,7 +146,7 @@ func cmdPrint(args []string) int {
 	if err != nil {
 		return errExit(err)
 	}
-	defer p.Close()
+	defer func() { _ = p.Close() }()
 
 	opts := brotherql.PrintOptions{
 		Label:   lbl,

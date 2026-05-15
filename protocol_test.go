@@ -29,7 +29,7 @@ func assertPrintJobMatchesGolden(t *testing.T, model modelInfo, goldenPath strin
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	img, err := png.Decode(f)
 	if err != nil {
 		t.Fatal(err)

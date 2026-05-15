@@ -12,7 +12,7 @@ func TestEncodeRasterMatchesGolden(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	img, err := png.Decode(f)
 	if err != nil {
 		t.Fatal(err)
@@ -48,7 +48,7 @@ func TestEncodeRasterRowCount(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	img, err := png.Decode(f)
 	if err != nil {
 		t.Fatal(err)

@@ -20,7 +20,7 @@ type usbTransport struct {
 // listUSB enumerates connected Brother QL printers without claiming them.
 func listUSB() ([]Info, error) {
 	ctx := gousb.NewContext()
-	defer ctx.Close()
+	defer func() { _ = ctx.Close() }()
 
 	var infos []Info
 	devs, err := ctx.OpenDevices(func(desc *gousb.DeviceDesc) bool {
@@ -32,7 +32,7 @@ func listUSB() ([]Info, error) {
 	}
 	defer func() {
 		for _, d := range devs {
-			d.Close()
+			_ = d.Close()
 		}
 	}()
 
@@ -60,7 +60,7 @@ func openUSB(serial string) (*Printer, error) {
 		return ok
 	})
 	if err != nil {
-		ctx.Close()
+		_ = ctx.Close()
 		return nil, fmt.Errorf("brotherql: enumerate USB: %w", err)
 	}
 
@@ -78,11 +78,11 @@ func openUSB(serial string) (*Printer, error) {
 	}
 	for _, d := range devs {
 		if d != dev {
-			d.Close()
+			_ = d.Close()
 		}
 	}
 	if dev == nil {
-		ctx.Close()
+		_ = ctx.Close()
 		return nil, ErrPrinterNotFound
 	}
 
@@ -101,8 +101,8 @@ func openUSB(serial string) (*Printer, error) {
 
 	intf, intfDone, err := dev.DefaultInterface()
 	if err != nil {
-		dev.Close()
-		ctx.Close()
+		_ = dev.Close()
+		_ = ctx.Close()
 		return nil, fmt.Errorf("brotherql: claim interface: %w", err)
 	}
 
@@ -122,8 +122,8 @@ func openUSB(serial string) (*Printer, error) {
 	}
 	if outEP == nil || inEP == nil {
 		intfDone()
-		dev.Close()
-		ctx.Close()
+		_ = dev.Close()
+		_ = ctx.Close()
 		return nil, fmt.Errorf("brotherql: missing bulk endpoints")
 	}
 
@@ -156,10 +156,10 @@ func (u *usbTransport) Close() error {
 		u.intfDone()
 	}
 	if u.dev != nil {
-		u.dev.Close()
+		_ = u.dev.Close()
 	}
 	if u.ctx != nil {
-		u.ctx.Close()
+		_ = u.ctx.Close()
 	}
 	return nil
 }

@@ -13,7 +13,7 @@ jobs:
         go: ['1.23', '1.24']
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Install libusb (Linux)
         if: runner.os == 'Linux'
@@ -24,7 +24,7 @@ jobs:
         run: brew install libusb pkg-config
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version: ${{ matrix.go }}
 
@@ -40,12 +40,12 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
         with:
-          go-version: '1.24'
+          go-version: '1.26'
       - name: Install libusb
         run: sudo apt-get update && sudo apt-get install -y libusb-1.0-0-dev pkg-config
-      - uses: golangci/golangci-lint-action@v6
+      - uses: golangci/golangci-lint-action@v9
         with:
           version: latest
