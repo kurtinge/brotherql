@@ -125,6 +125,7 @@ brotherql print --label 62 --serial 000D5G103245 image.png
 |----------|-------------|
 | `Label62` | 62mm continuous tape (DK-22205 etc.) |
 | `Label62x29` | 62mm × 29mm die-cut |
+| `Label12` | 12mm continuous tape (DK-22214) |
 
 More to come; PRs welcome.
 

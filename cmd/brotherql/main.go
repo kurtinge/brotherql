@@ -176,6 +176,8 @@ func labelByName(name string) (brotherql.LabelType, bool) {
 		return brotherql.Label62, true
 	case "62x29":
 		return brotherql.Label62x29, true
+	case "12":
+		return brotherql.Label12, true
 	default:
 		return brotherql.LabelType{}, false
 	}

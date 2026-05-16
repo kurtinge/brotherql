@@ -20,6 +20,8 @@ cd "$(dirname "$0")"
 VENV=".venv"
 PNG="text-label.png"
 RASTER_GOLDEN="text-label.golden.bin"
+PNG12="text-label.12mm.png"
+RASTER12_GOLDEN="text-label.12mm.golden.bin"
 MODELS=("QL-700" "QL-710W")
 
 if [ ! -d "$VENV" ]; then
@@ -39,6 +41,17 @@ d.rectangle([(0, 0), (695, 99)], outline=0, width=2)
 d.text((20, 30), 'TEST', fill=0)
 bw = img.point(lambda v: 0 if v < 128 else 255, mode='L')
 bw.convert('1', dither=Image.Dither.NONE).save('text-label.png')
+PY
+
+echo "Generating $PNG12 (pure 1-bit, exactly 106px wide)..."
+"$VENV/bin/python3" - <<'PY'
+from PIL import Image, ImageDraw
+img = Image.new('L', (106, 100), 255)
+d = ImageDraw.Draw(img)
+d.rectangle([(0, 0), (105, 99)], outline=0, width=2)
+d.text((10, 30), '12', fill=0)
+bw = img.point(lambda v: 0 if v < 128 else 255, mode='L')
+bw.convert('1', dither=Image.Dither.NONE).save('text-label.12mm.png')
 PY
 
 echo "Generating per-model print-job goldens and $RASTER_GOLDEN from brother_ql..."
@@ -71,6 +84,28 @@ for model in models:
             f.write(raster)
         print(f'  text-label.golden.bin: {len(raster)} bytes')
         raster_written = True
+PY
+
+echo "Generating $RASTER12_GOLDEN from brother_ql (label 12)..."
+"$VENV/bin/python3" - <<'PY'
+from brother_ql.raster import BrotherQLRaster
+from brother_ql.conversion import convert
+
+qlr = BrotherQLRaster('QL-700')
+qlr.exception_on_warning = True
+convert(qlr=qlr, images=['text-label.12mm.png'], label='12', cut=True, compress=False)
+data = qlr.data
+raster = bytearray()
+i = 0
+while i < len(data) - 92:
+    if data[i] == 0x67 and data[i+1] == 0x00 and data[i+2] == 0x5A:
+        raster.extend(data[i+3:i+93])
+        i += 93
+    else:
+        i += 1
+with open('text-label.12mm.golden.bin', 'wb') as f:
+    f.write(raster)
+print(f'  text-label.12mm.golden.bin: {len(raster)} bytes')
 PY
 
 echo "Done. Run 'go test ./...' to verify goldens still match."

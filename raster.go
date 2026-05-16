@@ -8,22 +8,18 @@ import (
 	"golang.org/x/image/draw"
 )
 
-// bytesPerRow is the QL-700 raster row width in bytes.
-// 90 bytes = 720 bits = 12 left padding + 696 printable + 12 right padding.
+// bytesPerRow is the QL-700/QL-710W raster row width in bytes; the print
+// head transmits a fixed 90 bytes (720 dots) per row regardless of media.
 const bytesPerRow = 90
-
-// leftPaddingBits is the QL-700's mechanical left margin: pixels are shifted
-// right by this many bits within each row.
-const leftPaddingBits = 12
 
 // encodeRaster converts an image to Brother raster bytes for the given label.
 // The image is resized to label.WidthPx wide while preserving aspect ratio,
 // then thresholded to 1-bit black/white.
 //
-// Each output row is 90 bytes (720 bits). The image is mirrored horizontally
-// to match the QL-700's print orientation, then placed at dots
-// [leftPaddingBits, leftPaddingBits+WidthPx). Within each byte, bits are
-// packed MSB-first (bit 7 = leftmost dot).
+// Each output row is 90 bytes (720 dots). The image is mirrored horizontally
+// to match the QL-700's print orientation, then placed so the printable
+// window starts OffsetPx dots from the left edge of the row. Within each
+// byte, bits are packed MSB-first (bit 7 = leftmost dot).
 func encodeRaster(img image.Image, label LabelType) ([]byte, error) {
 	if label.WidthPx == 0 {
 		return nil, fmt.Errorf("brotherql: label.WidthPx must be set")
@@ -35,9 +31,10 @@ func encodeRaster(img image.Image, label LabelType) ([]byte, error) {
 	h := bw.Bounds().Dy()
 	out := make([]byte, h*bytesPerRow)
 
-	// Image x=0 maps to dot (leftPaddingBits + WidthPx - 1), so the image
-	// is mirrored across the printable area as the QL-700 expects.
-	mirroredBase := leftPaddingBits + label.WidthPx - 1
+	// Image x=0 maps to the rightmost printable dot
+	// (OffsetPx + WidthPx - 1); the image is mirrored across the printable
+	// window. OffsetPx is the left pad of the emitted row (brother_ql offset_r).
+	mirroredBase := label.OffsetPx + label.WidthPx - 1
 
 	for y := 0; y < h; y++ {
 		rowOffset := y * bytesPerRow
